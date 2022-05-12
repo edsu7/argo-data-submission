@@ -30,29 +30,82 @@ import os
 import sys
 import argparse
 import subprocess
+import errno
+import shutil
+import random
+import string
 
 
 def main():
-    """
-    Python implementation of tool: download-aspera
+    #Parsing of the input parameters using argparse
+    parser = argparse.ArgumentParser(description='Download files from EGA aspera server')
+    parser.add_argument('-p', '--project_name', dest="project_name", help="Name of the ICGC project", required=True)
+    parser.add_argument('-f', '--file_name', dest="file_name", help="EGA file name", required=True)
+    parser.add_argument('-o', '--output', dest='output', help="Output file name", required=True)
 
-    This is auto-generated Python code, please update as needed!
-    """
+    results = parser.parse_args()
 
-    parser = argparse.ArgumentParser(description='Tool: download-aspera')
-    parser.add_argument('-i', '--input-file', dest='input_file', type=str,
-                        help='Input file', required=True)
-    parser.add_argument('-o', '--output-dir', dest='output_dir', type=str,
-                        help='Output directory', required=True)
-    args = parser.parse_args()
+    # Generate random file name to output name of file to be downloaded
+    file_list = randomword(60)+".txt"
 
-    if not os.path.isfile(args.input_file):
-        sys.exit('Error: specified input file %s does not exist or is not accessible!' % args.input_file)
+    try:
+        try:
+            # Check if ASCP_EGA_HOST environment variable exists: ega host
+            os.environ['ASCP_SCP_HOST']
 
-    if not os.path.isdir(args.output_dir):
-        sys.exit('Error: specified output dir %s does not exist or is not accessible!' % args.output_dir)
+            # Check if ASCP_EGA_USER environment variable exists: ega username
+            os.environ['ASCP_SCP_USER']
 
-    subprocess.run(f"cp {args.input_file} {args.output_dir}/", shell=True, check=True)
+            # Check if ASPERA_SCP_PASS environment variable exists: ascpera password
+            os.environ['ASPERA_SCP_PASS']
+        except KeyError:
+            raise KeyError("Global Variable: ASCP_SCP_HOST, ASCP_SCP_USER and ASPERA_SCP_PASS must exist in the environment.")
+
+        # Raise an error if the output file exists
+        if os.path.isfile(results.output):
+            raise ValueError("Output file already exists")
+
+        # Write the file to be downloaded to the temporary file
+        with open(file_list, 'w') as f:
+            f.write(os.path.join('data',results.project_name,results.file_name))
+            f.write('\n')
+
+        # Download process
+        result=subprocess.run(['ascp','-k','1','-QTl','100m','--file-list='+file_list,'--partial-file-suffix=PART','--ignore-host-key','--mode=recv','--host='+os.environ['ASCP_EGA_HOST'],'--user='+os.environ['ASCP_EGA_USER'],'.'])
+        mkdir_p(os.path.dirname(results.output),os.path.basename(file))
+        
+        shutil.move(
+            os.path.basename(results.file_name),
+            results.output+"/"+os.path.basename(results.file_name)+"/"+results.file_name
+        )
+        
+        if result.returncode==0:
+            subprocess.run("touch "+results.output+"/"+os.path.basename(results.file_name)+"/DOWNLOAD.SUCCESS",shell=True)
+        else:
+            subprocess.run("touch "+results.output+"/"+os.path.basename(results.file_name)+"/DOWNLOAD.FAILURE",shell=True)
+            
+        # Deletion of temporary elements
+        os.remove(file_list)
+    except Exception as err:
+        print(str(err))
+        if os.path.isfile(file_list):
+            os.remove(file_list)
+        exit(1)
+
+
+
+def randomword(length):
+   return(''.join(random.choice(string.ascii_lowercase) for i in range(length)))
+
+def mkdir_p(path,file):
+    try:
+        os.makedirs(path,0o755, True )
+        os.makedirs(path+"/"+file,0o755, True )
+    except OSError as exc:  # Python >2.5
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else:
+            raise
 
 
 if __name__ == "__main__":
