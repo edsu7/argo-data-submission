@@ -93,19 +93,19 @@ def main():
 
         # Deletion of temporary elements
         os.remove(cred_file)
-    except Exception, err:
-        print str(err)
+    except Exception as err:
+        print(str(err))
         if os.path.isfile(cred_file):
             os.remove(cred_file)
         exit(1)
 
 def randomword(length):
-    return(''.join(random.choice(string.lowercase) for i in range(length)))
+    return(''.join(random.choice(string.ascii_lowercase) for i in range(length)))
 
 def mkdir_p(path):
     try:
-        os.makedirs(path)
-    except OSError, exc:  # Python >2.5
+        os.makedirs(path,0o755, True )
+    except OSError as exc:  # Python >2.5
         if exc.errno == errno.EEXIST and os.path.isdir(path):
             pass
         else:
