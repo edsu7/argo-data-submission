@@ -72,3 +72,5 @@ wfpr_modules/github.com/*/*/*/tests
 # singularity images
 **/*.img
 **/*.sif
+download-aspera/.ipynb_checkpoints/main-checkpoint.py
+download-aspera/.ipynb_checkpoints/main-checkpoint.nf
