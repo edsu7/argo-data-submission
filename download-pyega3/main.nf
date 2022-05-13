@@ -61,21 +61,22 @@ process downloadPyega3 {
   memory "${params.mem} GB"
 
   input:  // input, make update as needed
-    path input_file
+    path output
+    val project
+    val ega_id
 
   output:  // output, make update as needed
-    path "output_dir/${params.output_pattern}", emit: output_file
+    path "output_dir/${*/pyega3_output.log}", emit: log
 
   script:
-    // add and initialize variables here as needed
+    def tempdir_arg = tempdir != "" ? "--tempdir ${tempdir}" : ""
 
     """
-    mkdir -p output_dir
-
-    main.py \
-      -i ${input_file} \
-      -o output_dir
-
+    python main.py \\
+    -p ${project}\\
+    -f ${ega_id} \\
+    -o ${output} \\
+    > download.log 2>&1
     """
 }
 
@@ -84,6 +85,8 @@ process downloadPyega3 {
 // using this command: nextflow run <git_acc>/<repo>/<pkg_name>/<main_script>.nf -r <pkg_name>.v<pkg_version> --params-file xxx
 workflow {
   downloadPyega3(
-    file(params.input_file)
+    file(params.output),
+    file(params.project),
+    file(params.ega_id)
   )
 }
