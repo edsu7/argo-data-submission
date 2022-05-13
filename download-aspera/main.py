@@ -72,7 +72,7 @@ def main():
 
         # Download process
         result=subprocess.run(['ascp','-k','1','-QTl','100m','--file-list='+file_list,'--partial-file-suffix=PART','--ignore-host-key','--mode=recv','--host='+os.environ['ASCP_EGA_HOST'],'--user='+os.environ['ASCP_EGA_USER'],'.'])
-        mkdir_p(os.path.dirname(results.output),os.path.basename(file))
+        mkdir_p(results.output,os.path.basename(results.file_name))
         
         shutil.move(
             os.path.basename(results.file_name),
@@ -99,8 +99,8 @@ def randomword(length):
 
 def mkdir_p(path,file):
     try:
-        os.makedirs(path,0o755, True )
-        os.makedirs(path+"/"+file,0o755, True )
+        os.makedirs(path,mode=0o755, exist_ok=True )
+        os.makedirs(path+"/"+file,mode=0o755, exist_ok=True )
     except OSError as exc:  # Python >2.5
         if exc.errno == errno.EEXIST and os.path.isdir(path):
             pass

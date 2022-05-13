@@ -82,7 +82,7 @@ def main():
         shutil.move(os.getcwd()+"/pyega3_output.log", results.output+"/"+results.file_name)
         
         # Move pyega3 log into new download directory
-        result=subprocess.run("grep 'Download complete' "+results.output+"/"+results.file_name+"/pyega3_out.log"+" || false",shell=True)
+        result=subprocess.run("grep 'Download complete' "+results.output+"/"+results.file_name+"/pyega3_output.log"+" || false",shell=True)
         
         # check if download successful
         if result.returncode==0:
