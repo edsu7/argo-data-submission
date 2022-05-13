@@ -72,3 +72,10 @@ wfpr_modules/github.com/*/*/*/tests
 # singularity images
 **/*.img
 **/*.sif
+download-aspera/.ipynb_checkpoints/main-checkpoint.nf
+download-aspera/.ipynb_checkpoints/main-checkpoint.py
+download-pyega3/.ipynb_checkpoints/main-checkpoint.py
+download-pyega3/.ipynb_checkpoints/main-checkpoint.py
+download-aspera/.ipynb_checkpoints/main-checkpoint.py
+download-aspera/.ipynb_checkpoints/main-checkpoint.nf
+download-pyega3/.ipynb_checkpoints/main-checkpoint.nf
