@@ -64,18 +64,17 @@ process downloadAspera {
     val input_file
     val project
   output:  // output, make update as needed
-    path "output_dir/${params.output_pattern}", emit: output_file
+    path "${output_dir}/*.md5", emit: output_file
 
   script:
     // add and initialize variables here as needed
-
+    output_dir = project+"/"+input_file.replaceAll(/^.*\//, "")
     """
-    mkdir -p output_dir
-
+    mkdir -p ${output_dir}
     python3.6 /tools/main.py \\
       -f ${input_file} \\
       -p ${project} \\
-      -o output_dir/ \\
+      -o ${output_dir} \\
       > download.log 2>&1
 
     """

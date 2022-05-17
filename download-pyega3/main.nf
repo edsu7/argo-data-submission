@@ -66,16 +66,16 @@ process downloadPyega3 {
     val ega_id
 
   output:  // output, make update as needed
-    path "output_dir/*/pyega3_output.log", emit: logs
+    path "${ega_id}/*.md5", emit: output_file
 
   script:
 
     """
-    mkdir -p output_dir
+    mkdir -p ${ega_id}
     python3.6 /tools/main.py \\
     	-p ${project} \\
     	-f ${ega_id} \\
-    	-o output_dir/ \\
+    	-o \$PWD \\
     	> download.log 2>&1
     """
 }

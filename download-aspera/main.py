@@ -72,18 +72,23 @@ def main():
 
         # Download process
         result=subprocess.run(['/home/ubuntu/.aspera/connect/bin/ascp','-k','1','-QTl','100m','--file-list='+file_list,'--partial-file-suffix=PART','--ignore-host-key','--mode=recv','--host='+os.environ['ASCP_SCP_HOST'],'--user='+os.environ['ASCP_SCP_USER'],'.'])
-        mkdir_p(results.output,os.path.basename(results.file_name))
         
         shutil.move(
             os.path.basename(results.file_name),
-            results.output+"/"+os.path.basename(results.file_name)+"/"+os.path.basename(results.file_name)
+            results.output+"/"+os.path.basename(results.file_name)
         )
         
         if result.returncode==0:
-            subprocess.run("touch "+results.output+"/"+os.path.basename(results.file_name)+"/DOWNLOAD.SUCCESS",shell=True)
+            subprocess.run("touch "+results.output+"/DOWNLOAD.SUCCESS",shell=True)
         else:
-            subprocess.run("touch "+results.output+"/"+os.path.basename(results.file_name)+"/DOWNLOAD.FAILURE",shell=True)
-            
+            subprocess.run("touch "+results.output+"/DOWNLOAD.FAILURE",shell=True)
+        
+        result=subprocess.run("md5sum "+results.output+"/"+os.path.basename(results.file_name)+" > "+results.output+"/"+os.path.basename(results.file_name)+".md5",shell=True)
+
+        if result.returncode==0:
+            subprocess.run("touch "+results.output+"/MD5.SUCCESS",shell=True)
+        else:
+            subprocess.run("touch "+results.output+"/MD5.FAILURE",shell=True)
         # Deletion of temporary elements
         os.remove(file_list)
     except Exception as err:

@@ -37,19 +37,17 @@ nextflow.enable.dsl = 2
 version = '0.1.0'  // package version
 
 container = [
-    'quay.io': 'quay.io/edsu7/argo-data-submission.download-pyega3'
+    'ghrc.io': 'ghrc.io/edsu7/argo-data-submission.download-pyega3'
 ]
-default_container_registry = 'quay.io'
+default_container_registry = 'ghrc.io'
 /********************************************************************/
 
 // universal params
 params.container_registry = ""
 params.container_version = ""
 params.container = ""
-
+params.expected_output="expected/156-01-2TR.CEL.md5"
 // tool specific parmas go here, add / change as needed
-params.input_file = ""
-params.expected_output = ""
 
 include { downloadPyega3 } from '../main'
 
@@ -70,12 +68,9 @@ process file_smart_diff {
     # in this example, we need to remove date field before comparison eg, <div id="header_filename">Tue 19 Jan 2021<br/>test_rg_3.bam</div>
     # sed -e 's#"header_filename">.*<br/>test_rg_3.bam#"header_filename"><br/>test_rg_3.bam</div>#'
 
-    cat ${output_file[0]} \
-      | sed -e 's#"header_filename">.*<br/>#"header_filename"><br/>#' > normalized_output
-
-    ([[ '${expected_file}' == *.gz ]] && gunzip -c ${expected_file} || cat ${expected_file}) \
-      | sed -e 's#"header_filename">.*<br/>#"header_filename"><br/>#' > normalized_expected
-
+    cat ${output_file} | cut -f1 -d' ' > normalized_output
+    cat ${expected_file} | cut -f1 -d' ' > normalized_expected
+    
     diff normalized_output normalized_expected \
       && ( echo "Test PASSED" && exit 0 ) || ( echo "Test FAILED, output file mismatch." && exit 1 )
     """
@@ -84,14 +79,15 @@ process file_smart_diff {
 
 workflow checker {
   take:
-    input_file
+    project
+    ega_id
     expected_output
 
   main:
-    downloadPyega3(
-      input_file
+   downloadPyega3(
+      project,
+      ega_id
     )
-
     file_smart_diff(
       downloadPyega3.out.output_file,
       expected_output
@@ -101,7 +97,8 @@ workflow checker {
 
 workflow {
   checker(
-    file(params.input_file),
-    file(params.expected_output)
+    params.project,
+    params.ega_id,
+    params.expected_output
   )
 }
