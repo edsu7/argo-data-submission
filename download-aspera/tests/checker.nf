@@ -46,7 +46,7 @@ default_container_registry = 'ghrc.io'
 params.container_registry = ""
 params.container_version = ""
 params.container = ""
-params.expected_output="expected/156-01-2TR.CEL.md5"
+params.expected_output="expected/100MB.md5"
 // tool specific parmas go here, add / change as needed
 
 include { downloadAspera } from '../main'
