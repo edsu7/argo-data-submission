@@ -79,16 +79,15 @@ def main():
         subprocess.call(
             ["pyega3","-cf",cred_file,"fetch",results.file_name,"--output-dir",results.output,"--delete-temp-files"]
         )
-        shutil.move(os.getcwd()+"/pyega3_output.log", results.output+"/"+results.file_name)
         
         # Move pyega3 log into new download directory
-        result=subprocess.run("grep 'Download complete' "+results.output+"/"+results.file_name+"/pyega3_output.log"+" || false",shell=True)
+        result=subprocess.run("grep 'Download complete' "+os.getcwd()+"/pyega3_output.log"+" || false",shell=True)
         
         # check if download successful
         if result.returncode==0:
-            subprocess.run("touch "+results.output+"/"+results.file_name+"/DOWNLOAD.SUCCESS",shell=True)
+            subprocess.run("touch "+results.output+"/DOWNLOAD.SUCCESS",shell=True)
         else:
-            subprocess.run("touch "+results.output+"/"+results.file_name+"/DOWNLOAD.FAILURE",shell=True)
+            subprocess.run("touch "+results.output+"/DOWNLOAD.FAILURE",shell=True)
         
 
         # Deletion of temporary elements

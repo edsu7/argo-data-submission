@@ -71,12 +71,12 @@ def main():
             f.write('\n')
 
         # Download process
-        result=subprocess.run(['ascp','-k','1','-QTl','100m','--file-list='+file_list,'--partial-file-suffix=PART','--ignore-host-key','--mode=recv','--host='+os.environ['ASCP_EGA_HOST'],'--user='+os.environ['ASCP_EGA_USER'],'.'])
+        result=subprocess.run(['/home/ubuntu/.aspera/connect/bin/ascp','-k','1','-QTl','100m','--file-list='+file_list,'--partial-file-suffix=PART','--ignore-host-key','--mode=recv','--host='+os.environ['ASCP_SCP_HOST'],'--user='+os.environ['ASCP_SCP_USER'],'.'])
         mkdir_p(results.output,os.path.basename(results.file_name))
         
         shutil.move(
             os.path.basename(results.file_name),
-            results.output+"/"+os.path.basename(results.file_name)+"/"+results.file_name
+            results.output+"/"+os.path.basename(results.file_name)+"/"+os.path.basename(results.file_name)
         )
         
         if result.returncode==0:

@@ -32,9 +32,9 @@ nextflow.enable.dsl = 2
 version = '0.1.0'  // package version
 
 container = [
-    'quay.io': 'quay.io/edsu7/argo-data-submission.download-aspera'
+    'ghrc.io': 'ghrc.io/edsu7/argo-data-submission.download-aspera'
 ]
-default_container_registry = 'quay.io'
+default_container_registry = 'ghrc.io'
 /********************************************************************/
 
 
@@ -61,8 +61,8 @@ process downloadAspera {
   memory "${params.mem} GB"
 
   input:  // input, make update as needed
-    path input_file
-
+    val input_file
+    val project
   output:  // output, make update as needed
     path "output_dir/${params.output_pattern}", emit: output_file
 
@@ -72,9 +72,11 @@ process downloadAspera {
     """
     mkdir -p output_dir
 
-    main.py \
-      -i ${input_file} \
-      -o output_dir
+    python3.6 /tools/main.py \\
+      -f ${input_file} \\
+      -p ${project} \\
+      -o output_dir/ \\
+      > download.log 2>&1
 
     """
 }
@@ -84,6 +86,7 @@ process downloadAspera {
 // using this command: nextflow run <git_acc>/<repo>/<pkg_name>/<main_script>.nf -r <pkg_name>.v<pkg_version> --params-file xxx
 workflow {
   downloadAspera(
-    file(params.input_file)
+    params.input_file,
+    params.project
   )
 }
