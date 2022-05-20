@@ -51,7 +51,81 @@ workflow ArgoDataSubmissionWf {
 
 
   main:  // update as needed
-    demoCopyFile(input_file)
+    Channel
+        .fromPath(params.registered_samples)
+        .splitCsv(header:true)
+        .map{ row-> tuple(
+        row.program_id,
+        row.submitter_donor_id,
+        row.gender,
+        row.submitter_specimen_id,
+        row.specimen_tissue_source,
+        row.tumour_normal_designation,
+        row.specimen_type,
+        row.submitter_sample_id,
+        row.sample_type,
+        row.EGAX,
+        row.EGAN,
+        row.EGAR,
+        row.EGAF
+        )
+        }
+        .set{ samples_ch }
+      
+     if (params.download.toLowerCase() == 'aspera') {
+         EGAFs = Channel.fromList(row.EGAF.split(","))
+         
+         downloadAspera(EGAFs,row.program_id)
+         
+         generatePayloads(
+            row.program_id,
+            row.submitter_donor_id,
+            row.gender,
+            row.submitter_specimen_id,
+            row.specimen_tissue_source,
+            row.tumour_normal_designation,
+            row.specimen_type,
+            row.submitter_sample_id,
+            row.sample_type,
+            row.EGAX,
+            row.EGAN,
+            row.EGAR,
+            row.EGAF,
+            downloadAspera.out.output_files,
+            downloadAspera.out.md5_files,
+        )
+    )        
+         
+     } else {
+         EGAFs = Channel.fromList(row.EGAF.split(","))
+         downloadPyega3(EGAFs,row.program_id)
+         
+         generatePayloads(
+            row.program_id,
+            row.submitter_donor_id,
+            row.gender,
+            row.submitter_specimen_id,
+            row.specimen_tissue_source,
+            row.tumour_normal_designation,
+            row.specimen_type,
+            row.submitter_sample_id,
+            row.sample_type,
+            row.EGAX,
+            row.EGAN,
+            row.EGAR,
+            row.EGAF,
+            downloadPyega3.out.output_files,
+            downloadPyega3.out.md5_files,
+        )        
+         
+     }
+     
+     SongScoreUpload(
+     row.program_id,
+     generatePayloads.out.json
+     )
+    
+
 
 
   emit:  // update as needed

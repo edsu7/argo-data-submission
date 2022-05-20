@@ -66,7 +66,8 @@ process downloadPyega3 {
     val ega_id
 
   output:  // output, make update as needed
-    path "${ega_id}/*.md5", emit: output_file
+    path "${output_dir}/*.md5", emit: md5_file
+    path "${output_dir}/*.{.bam,.cram,.fastq.gz,.fq.gz}", emit: output_file
 
   script:
 

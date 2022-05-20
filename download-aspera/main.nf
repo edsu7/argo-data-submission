@@ -64,7 +64,8 @@ process downloadAspera {
     val input_file
     val project
   output:  // output, make update as needed
-    path "${output_dir}/*.md5", emit: output_file
+    path "${output_dir}/*.md5", emit: md5_file
+    path "${output_dir}/*.{.bam,.cram,.fastq.gz,.fq.gz}", emit: output_file
 
   script:
     // add and initialize variables here as needed
