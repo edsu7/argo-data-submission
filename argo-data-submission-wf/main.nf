@@ -40,14 +40,15 @@ params.publish_dir = ""  // set to empty string will disable publishDir
 params.input_file = ""
 params.cleanup = true
 
-include { demoCopyFile } from "./local_modules/demo-copy-file"
+
+include { SongScoreUpload } from "./wfpr_modules/nextflow-data-processing-utility-tools/song-score-upload@2.6.1/local_modules/main.nf" 
 
 
 
 // please update workflow code as needed
 workflow ArgoDataSubmissionWf {
   take:  // update as needed
-    input_file
+    val registered_samples
 
 
   main:  // update as needed
@@ -64,6 +65,7 @@ workflow ArgoDataSubmissionWf {
         row.specimen_type,
         row.submitter_sample_id,
         row.sample_type,
+        row.matchedNormalSubmitterSampleId,
         row.EGAX,
         row.EGAN,
         row.EGAR,
@@ -77,67 +79,70 @@ workflow ArgoDataSubmissionWf {
          
          downloadAspera(EGAFs,row.program_id)
          
-         generatePayloads(
-            row.program_id,
-            row.submitter_donor_id,
-            row.gender,
-            row.submitter_specimen_id,
-            row.specimen_tissue_source,
-            row.tumour_normal_designation,
-            row.specimen_type,
-            row.submitter_sample_id,
-            row.sample_type,
-            row.EGAX,
-            row.EGAN,
-            row.EGAR,
-            row.EGAF,
-            downloadAspera.out.output_files,
-            downloadAspera.out.md5_files,
-        )
-    )        
-         
-     } else {
+         if (row.json) {
+             output_json=row.json
+         } else {
+             generatePayloads(
+                row.program_id,
+                row.submitter_donor_id,
+                row.gender,
+                row.submitter_specimen_id,
+                row.specimen_tissue_source,
+                row.tumour_normal_designation,
+                row.specimen_type,
+                row.submitter_sample_id,
+                row.sample_type,
+                row.matchedNormalSubmitterSampleId,
+                row.EGAX,
+                row.EGAN,
+                row.EGAR,
+                row.EGAF,
+                downloadAspera.out.output_files,
+                downloadAspera.out.md5_files,
+            )
+            output_json=generatePayloads.out.json
+        }
+    } else {
          EGAFs = Channel.fromList(row.EGAF.split(","))
          downloadPyega3(EGAFs,row.program_id)
          
-         generatePayloads(
-            row.program_id,
-            row.submitter_donor_id,
-            row.gender,
-            row.submitter_specimen_id,
-            row.specimen_tissue_source,
-            row.tumour_normal_designation,
-            row.specimen_type,
-            row.submitter_sample_id,
-            row.sample_type,
-            row.EGAX,
-            row.EGAN,
-            row.EGAR,
-            row.EGAF,
-            downloadPyega3.out.output_files,
-            downloadPyega3.out.md5_files,
-        )        
+         if (row.json) {
+             output_json=row.json
+         } else {         
+             generatePayloads(
+                row.program_id,
+                row.submitter_donor_id,
+                row.gender,
+                row.submitter_specimen_id,
+                row.specimen_tissue_source,
+                row.tumour_normal_designation,
+                row.specimen_type,
+                row.submitter_sample_id,
+                row.sample_type,
+                row.matchedNormalSubmitterSampleId,
+                row.EGAX,
+                row.EGAN,
+                row.EGAR,
+                row.EGAF,
+                downloadPyega3.out.output_files,
+                downloadPyega3.out.md5_files,
+            )
+            output_json=generatePayloads.out.json
+        }
          
-     }
+    }
      
      SongScoreUpload(
      row.program_id,
-     generatePayloads.out.json
+     output_json
      )
-    
-
-
-
-  emit:  // update as needed
-    output_file = demoCopyFile.out.output_file
 
 }
-
 
 // this provides an entry point for this main script, so it can be run directly without clone the repo
 // using this command: nextflow run <git_acc>/<repo>/<pkg_name>/<main_script>.nf -r <pkg_name>.v<pkg_version> --params-file xxx
 workflow {
   ArgoDataSubmissionWf(
-    file(params.input_file)
+    params.registered_samples
   )
 }
