@@ -57,7 +57,7 @@ params.output_pattern = "*"  // output file name pattern
 process downloadPyega3 {
   container "${params.container ?: container[params.container_registry ?: default_container_registry]}:${params.container_version ?: version}"
   publishDir "${params.publish_dir}/${task.process.replaceAll(':', '_')}", mode: "copy", enabled: params.publish_dir
-
+  errorStrategy 'terminate'
   cpus params.cpus
   memory "${params.mem} GB"
 
@@ -66,8 +66,8 @@ process downloadPyega3 {
     val ega_id
 
   output:  // output, make update as needed
-    path "${output_dir}/*.md5", emit: md5_file
-    path "${output_dir}/*.{.bam,.cram,.fastq.gz,.fq.gz}", emit: output_file
+    path "${ega_id}/*.md5", emit: md5_file
+    path "${ega_id}/*.{.bam,.cram,.fastq.gz,.fq.gz}", emit: output_file
 
   script:
 

@@ -71,10 +71,10 @@ score_params = [
     'api_token': params.score_api_token ?: params.api_token
 ]
 
-include { songSubmit as songSub } from './local_modules/song-submit' params(song_params)
-include { songManifest as songMan } from './local_modules/song-manifest' params(song_params)
-include { scoreUpload as scoreUp } from './local_modules/score-upload' params(score_params)
-include { songPublish as songPub } from './local_modules/song-publish' params(song_params)
+include { songSubmit as songSub } from './local_modules/song_submit.nf' params(song_params)
+include { songManifest as songMan } from './local_modules/song_manifest.nf' params(song_params)
+include { scoreUpload as scoreUp } from './local_modules/score_upload.nf' params(score_params)
+include { songPublish as songPub } from './local_modules/song_publish.nf' params(song_params)
 
 
 workflow SongScoreUpload {

@@ -37,112 +37,121 @@ params.mem = 1  // GB
 params.publish_dir = ""  // set to empty string will disable publishDir
 
 // tool specific parmas go here, add / change as needed
-params.input_file = ""
 params.cleanup = true
 
+params.registered_samples=''
+params.method=''
+params.program_id=''
+params.submitter_donor_id=''
+params.gender=''
+params.submitter_specimen_id=''
+params.specimen_tissue_source=''
+params.tumour_normal_designation=''
+params.specimen_type=''
+params.submitter_sample_id=''
+params.sample_type=''
+params.matchedNormalSubmitterSampleId=''
+params.EGAX=''
+params.EGAN=''
+params.EGAR=''
+params.EGAF=''
+params.json=''
 
-include { SongScoreUpload } from "./wfpr_modules/nextflow-data-processing-utility-tools/song-score-upload@2.6.1/local_modules/main.nf" 
+include { SongScoreUpload } from "./wfpr_modules/nextflow-data-processing-utility-tools/song-score-upload@2.6.1/main.nf" 
+include { downloadAspera } from "./wfpr_modules/download-aspera/main.nf"
+include { downloadPyega3 } from "./wfpr_modules/download-pyega3/main.nf"
+include { generateJson } from "./wfpr_modules/generate-json/main.nf"
+//include { diffJson } from "./wfpr_modules/differentiate-json/main.nf"
 
-
-
-// please update workflow code as needed
 workflow ArgoDataSubmissionWf {
-  take:  // update as needed
-    val registered_samples
+  take:
+    method
+    program_id
+    submitter_donor_id
+    gender
+    submitter_specimen_id
+    specimen_tissue_source
+    tumour_normal_designation
+    specimen_type
+    submitter_sample_id
+    sample_type
+    matchedNormalSubmitterSampleId
+    EGAX
+    EGAN
+    EGAR
+    EGAF
+    json
+    
+  main:
 
-
-  main:  // update as needed
-    Channel
-        .fromPath(params.registered_samples)
-        .splitCsv(header:true)
-        .map{ row-> tuple(
-        row.program_id,
-        row.submitter_donor_id,
-        row.gender,
-        row.submitter_specimen_id,
-        row.specimen_tissue_source,
-        row.tumour_normal_designation,
-        row.specimen_type,
-        row.submitter_sample_id,
-        row.sample_type,
-        row.matchedNormalSubmitterSampleId,
-        row.EGAX,
-        row.EGAN,
-        row.EGAR,
-        row.EGAF
-        )
-        }
-        .set{ samples_ch }
-      
-     if (params.download.toLowerCase() == 'aspera') {
-         EGAFs = Channel.fromList(row.EGAF.split(","))
-         
-         downloadAspera(EGAFs,row.program_id)
-         
-         if (row.json) {
-             output_json=row.json
-         } else {
-             generatePayloads(
-                row.program_id,
-                row.submitter_donor_id,
-                row.gender,
-                row.submitter_specimen_id,
-                row.specimen_tissue_source,
-                row.tumour_normal_designation,
-                row.specimen_type,
-                row.submitter_sample_id,
-                row.sample_type,
-                row.matchedNormalSubmitterSampleId,
-                row.EGAX,
-                row.EGAN,
-                row.EGAR,
-                row.EGAF,
-                downloadAspera.out.output_files,
-                downloadAspera.out.md5_files,
-            )
-            output_json=generatePayloads.out.json
-        }
+    EGAFs = Channel.from(EGAF.split(","))
+    if (method.toLowerCase() == 'aspera') {
+      downloadAspera(EGAFs,program_id)
+      output_files=downloadAspera.out.output_files.collect()
+      output_md5=downloadAspera.out.md5_file.collect()
     } else {
-         EGAFs = Channel.fromList(row.EGAF.split(","))
-         downloadPyega3(EGAFs,row.program_id)
-         
-         if (row.json) {
-             output_json=row.json
-         } else {         
-             generatePayloads(
-                row.program_id,
-                row.submitter_donor_id,
-                row.gender,
-                row.submitter_specimen_id,
-                row.specimen_tissue_source,
-                row.tumour_normal_designation,
-                row.specimen_type,
-                row.submitter_sample_id,
-                row.sample_type,
-                row.matchedNormalSubmitterSampleId,
-                row.EGAX,
-                row.EGAN,
-                row.EGAR,
-                row.EGAF,
-                downloadPyega3.out.output_files,
-                downloadPyega3.out.md5_files,
-            )
-            output_json=generatePayloads.out.json
-        }
-         
+      downloadPyega3(EGAFs,program_id)
+      output_files=downloadPyega3.out.output_files.collect()
+      output_md5=downloadPyega3.out.md5_file.collect()
+    }    
+    
+    generatePayloads(
+      program_id,
+      submitter_donor_id,
+      gender,
+      submitter_specimen_id,
+      specimen_tissue_source,
+      tumour_normal_designation,
+      specimen_type,
+      submitter_sample_id,
+      sample_type,
+      matchedNormalSubmitterSampleId,
+      EGAX,
+      EGAN,
+      EGAR,
+      EGAF,
+      output_files,
+      output_md5
+    )
+   
+    if (json.size()>0){
+      diffJson(json,generatePayloads.out.json)
+      output_json=json
+    } else {
+      output_json=generatePayloads.out.json
     }
-     
-     SongScoreUpload(
-     row.program_id,
-     output_json
-     )
 
+
+    SongScoreUpload(
+      program_id,
+      output_json
+    )
+  
+    emit:
+      output_json
+      output_files
+      output_analysis_id=SongScoreUpload.out.analysis_id
 }
 
 // this provides an entry point for this main script, so it can be run directly without clone the repo
 // using this command: nextflow run <git_acc>/<repo>/<pkg_name>/<main_script>.nf -r <pkg_name>.v<pkg_version> --params-file xxx
 workflow {
   ArgoDataSubmissionWf(
-    params.registered_samples
+    params.method,
+    params.program_id,
+    params.submitter_donor_id,
+    params.gender,
+    params.submitter_specimen_id,
+    params.specimen_tissue_source,
+    params.tumour_normal_designation,
+    params.specimen_type,
+    params.submitter_sample_id,
+    params.sample_type,
+    params.matchedNormalSubmitterSampleId,
+    params.EGAX,
+    params.EGAN,
+    params.EGAR,
+    params.EGAF,
+    params.json
   )
 }

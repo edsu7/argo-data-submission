@@ -56,7 +56,7 @@ params.output_pattern = "*"  // output file name pattern
 process generateJson {
   container "${params.container ?: container[params.container_registry ?: default_container_registry]}:${params.container_version ?: version}"
   publishDir "${params.publish_dir}/${task.process.replaceAll(':', '_')}", mode: "copy", enabled: params.publish_dir
-
+  errorStrategy 'terminate'
   cpus params.cpus
   memory "${params.mem} GB"
 
