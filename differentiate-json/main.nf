@@ -61,71 +61,27 @@ process differentiateJson {
   memory "${params.mem} GB"
 
   input:  // input, make update as needed
-    val program_id
-    val submitter_donor_id
-    val gender
-    val submitter_specimen_id
-    val specimen_tissue_source
-    val tumour_normal_designation
-    val specimen_type
-    val submitter_sample_id
-    val sample_type
-    val EGAX
-    val EGAN
-    val EGAR
-    val EGAF
-    val output_files
-    val md5_files
-
-  output:  // output, make update as needed
-    path "${output_dir}/*.json", emit: json_file
+    file(user_generated_json)
+    file(auto_generated_json)
 
   script:
-    output_dir = project+"/"
     """
-    mkdir -p ${ega_id}
+    mkdir -p ${output_dir}
     python3.6 /tools/main.py \\
-    	--program_id ${program_id} \\
-    	--submitter_donor_id ${submitter_donor_id} \\
-        --gender ${gender} \\
-        --submitter_specimen_id ${submitter_specimen_id} \\
-        --specimen_tissue_source ${specimen_tissue_source} \\
-        --tumour_normal_designation ${tumour_normal_designation} \\
-        --specimen_type ${specimen_type} \\
-        --submitter_sample_id ${submitter_sample_id} \\
-        --sample_type ${sample_type} \\
-        --matchedNormalSubmitterSampleId matchedNormalSubmitterSampleId \\
-        --EGAX ${EGAX} \\
-        --EGAN ${EGAN} \\
-        --EGAR ${EGAR} \\
-        --EGAF ${EGAF} \\
-        --files ${output_files} \\
-        --md5 ${md5_files} \\
-        --output_dir ${output_dir} \\
-    	> differentiate_json.log 2>&1
+      -a ${user_generated_json}
+      -b ${auto_generated_json}
+
     """
 }
+
+ 
 
 
 // this provides an entry point for this main script, so it can be run directly without clone the repo
 // using this command: nextflow run <git_acc>/<repo>/<pkg_name>/<main_script>.nf -r <pkg_name>.v<pkg_version> --params-file xxx
 workflow {
   differentiateJson(
-    params.program_id
-    params.submitter_donor_id
-    params.gender
-    params.submitter_specimen_id
-    params.specimen_tissue_source
-    params.tumour_normal_designation
-    params.specimen_type
-    params.submitter_sample_id
-    params.sample_type
-    params.matchedNormalSubmitterSampleId
-    params.EGAX
-    params.EGAN
-    params.EGAR
-    params.EGAF
-    params.output_files
-    params.md5_files
+    params.user_generated_json,
+    params.auto_generated_json
   )
 }
