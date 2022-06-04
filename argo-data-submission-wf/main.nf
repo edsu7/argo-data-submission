@@ -55,12 +55,15 @@ params.EGAX=''
 params.EGAN=''
 params.EGAR=''
 params.EGAF=''
-params.json=''
+params.json='.'
+params.c4gh_secret_key='NO_FILE'
+params.aspera_file='NO_FILE'
 
-include { SongScoreUpload } from "./wfpr_modules/nextflow-data-processing-utility-tools/song-score-upload@2.6.1/main.nf" 
+//include { SongScoreUpload } from "./wfpr_modules/nextflow-data-processing-utility-tools/song-score-upload@2.6.1/main.nf" 
 include { downloadAspera } from "./wfpr_modules/download-aspera/main.nf"
 include { downloadPyega3 } from "./wfpr_modules/download-pyega3/main.nf"
 include { generateJson } from "./wfpr_modules/generate-json/main.nf"
+include { decryptAspera } from "./wfpr_modules/decrypt-aspera/main.nf"
 //include { diffJson } from "./wfpr_modules/differentiate-json/main.nf"
 
 workflow ArgoDataSubmissionWf {
@@ -81,21 +84,24 @@ workflow ArgoDataSubmissionWf {
     EGAR
     EGAF
     json
+    aspera_file
+    c4gh_secret_key
     
   main:
-
-    EGAFs = Channel.from(EGAF.split(","))
+    EGAF_list=Channel.from(EGAF.split(","))
     if (method.toLowerCase() == 'aspera') {
-      downloadAspera(EGAFs,program_id)
-      output_files=downloadAspera.out.output_files.collect()
-      output_md5=downloadAspera.out.md5_file.collect()
+      aspera_file_list = Channel.from(aspera_file.split(","))
+      downloadAspera(aspera_file_list,EGAF_list,program_id)
+      decryptAspera(downloadAspera.out.output_files,c4gh_secret_key)
+      output_files=decryptAspera.out.output_files.collect()
+      output_md5=decryptAspera.out.md5_file.collect()
     } else {
-      downloadPyega3(EGAFs,program_id)
+      downloadPyega3(EGAF_list,program_id)
       output_files=downloadPyega3.out.output_files.collect()
       output_md5=downloadPyega3.out.md5_file.collect()
     }    
     
-    generatePayloads(
+    generateJson(
       program_id,
       submitter_donor_id,
       gender,
@@ -114,23 +120,24 @@ workflow ArgoDataSubmissionWf {
       output_md5
     )
    
-    if (json.size()>0){
-      diffJson(json,generatePayloads.out.json)
-      output_json=json
-    } else {
-      output_json=generatePayloads.out.json
-    }
+    //if (json!='.'){
+    //  diffJson(json,generateJson.out.json)
+    //  output_json=json
+    //} else {
+   //   output_json=generateJson.out.json
+    //}
 
 
-    SongScoreUpload(
-      program_id,
-      output_json
-    )
+    //SongScoreUpload(
+    //  program_id,
+    //  output_json
+    //)
   
     emit:
-      output_json
-      output_files
-      output_analysis_id=SongScoreUpload.out.analysis_id
+      generateJson.out.json
+      //output_json
+      //output_files
+      //output_analysis_id=SongScoreUpload.out.analysis_id
 }
 
 // this provides an entry point for this main script, so it can be run directly without clone the repo
@@ -152,6 +159,8 @@ workflow {
     params.EGAN,
     params.EGAR,
     params.EGAF,
-    params.json
+    params.json,
+    params.aspera_file,
+    params.c4gh_secret_key
   )
 }

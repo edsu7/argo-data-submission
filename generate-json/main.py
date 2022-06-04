@@ -74,7 +74,7 @@ def main():
     output_dict["analysisType"]['name']="sequencing_experiment"
 
     output_dict["samples"][0]["submitterSampleId"]=args.submitterSampleId
-    output_dict["samples"][0]["matchedNormalSubmitterSampleId"]=args.matchedNormalSubmitterSampleId
+    output_dict["samples"][0]["matchedNormalSubmitterSampleId"]=None if args.matchedNormalSubmitterSampleId=='' else args.matchedNormalSubmitterSampleId 
     output_dict["samples"][0]["sampleType"]=args.sampleType
     
     output_dict["samples"][0]['specimen']['submitterSpecimenId']=args.submitterSpecimenId
@@ -99,25 +99,30 @@ def main():
         output_dict["files"][ind]["fileType"]=determineFileType(file)
         output_dict["files"][ind]["fileSize"]=os.path.getsize(file)
         output_dict["files"][ind]["dataType"]="Submitted Reads"
-        output_dict["files"][ind]["fileMd5sum"]=md5
 
+        output_dict["files"][ind]["fileMd5sum"]=getMd5(md5)
         output_dict["files"][ind]["info"]={}
-        output_dict["files"][ind]["info"]['experiment']=args.EGAX.split(",")
-        output_dict["files"][ind]["info"]['sample']=args.EGAN.split(",")
-        output_dict["files"][ind]["info"]['run']=args.EGAR.split(",")
-        output_dict["files"][ind]["info"]['file']=args.EGAF.split(",")
-        output_dict["files"][ind]["info"]['dataset']=args.EGAD.split(",")
-        output_dict["files"][ind]["info"]['study']=args.EGAS.split(",")
+
+        for entry,argument_input in zip(
+                ['experiment','sample','run','file','dataset','study'],
+                [args.EGAX,args.EGAN,args.EGAR,args.EGAF,args.EGAD,args.EGAS]
+                ):
+            if argument_input:
+                output_dict["files"][ind]["info"][entry]=argument_input.split(",")
     
     
     if len(set([file['fileType'] for file in output_dict['files']]))>1:
         raise ValueError("Raising error, multiple read types provided. Better to mannually annotate")
     
-    print(output_dict)
+
+    ###BAM only,OKAY too if CRAM
     output_dict['read_groups']=determineReadGroup(output_dict["files"])
-    
     output_dict["read_group_count"]=len(output_dict['read_groups'])
     
+    output_dict["experiment"]['platform']=getHeaderInfo([args.output_files][0],"PL",4)
+    output_dict["experiment"]['platform_model']=getHeaderInfo([args.output_files][0],"PM",4)
+    output_dict["experiment"]["sequencing_center"]=getHeaderInfo([args.output_files][0],"CN",4)
+
     with open("auto_generated.json", "w") as outfile:
         outfile.write(json.dumps(output_dict,indent = 2))
     
@@ -205,7 +210,6 @@ def determineReadGroupBam(file_list):
         
         ###Populate readgroups
         list_IDs=getHeaderInfo(file,"ID",4)
-        print(file)
         for rg_id in list_IDs:
             rg_dict.append(setupDictReadGroups())
             rg_dict[-1]["read_group_id_in_bam"]=rg_id
@@ -221,13 +225,12 @@ def determineReadGroupBam(file_list):
             rg_dict[-1]["file_r1"]=file
             rg_dict[-1]["platform_unit"]=getHeaderInfo(file,"PL",4,rg_id)
             rg_dict[-1]["library_name"]=getHeaderInfo(file,"LB",4,rg_id)
-            
+    
     return(rg_dict)
             
                 
 def getInsertSize(file,rg_id,threads):
     cmd="samtools view -@"+str(threads)+" -F 256 -f 128 "+file+" | egrep '^@|"+rg_id+"'  | cut -f9"
-    print(cmd)
     result=subprocess.run(cmd,stdout=subprocess.PIPE,shell=True)
     return(numpy.median([abs(int(line)) for line in result.stdout.decode("utf-8").split("\n")[:-1]]))
 
@@ -244,19 +247,34 @@ def getReadLength(file,rg_id,read,threads):
         
     return(numpy.median([len(line) for line in result.stdout.decode("utf-8").split("\n")[:-1]]))
     
-def getHeaderInfo(file,subject,threads,rg=None):
-    if rg:
-        cmd="samtools view -@"+str(threads)+" "+file+" -H | grep '@RG' | grep "+rg+" | egrep '"+subject+":[a-zA-Z0-9._:-]+' -o | sed 's/"+subject+"://g' | sort | uniq"
-    else:
-        cmd="samtools view -@"+str(threads)+" "+file+" -H | grep '@RG' | egrep '"+subject+":[a-zA-Z0-9._:-]+' -o | sed 's/"+subject+"://g' | sort | uniq"
-        
+def getMd5(md5):
+    cmd="cat "+md5
     result=subprocess.run(cmd,stdout=subprocess.PIPE,shell=True)
     if result.returncode!=0:
-        raise ValueError("No readgroups found in "+file)
-    elif rg:
-        return(result.stdout.decode("utf-8").split("\n")[:-1][0])
+        raise ValueError("Md5 sum file could not be openned "+md5)
+    return(result.stdout.decode("utf-8").strip())
+
+def getHeaderInfo(file,subject,threads,rg=None):
+    if subject=='PM':
+        regex=':[a-zA-Z0-9 ]+'
     else:
-        return(list(set(result.stdout.decode("utf-8").split("\n")[:-1])))
+        regex=':[a-zA-Z0-9._:-]+'
+
+    if rg:
+        cmd="samtools view -@"+str(threads)+" "+file+" -H | grep '@RG' | grep "+rg+" | egrep '"+subject+regex+"' -o | sed 's/"+subject+"://g' | sort | uniq"
+    else:
+        cmd="samtools view -@"+str(threads)+" "+file+" -H | grep '@RG' | egrep '"+subject+regex+"' -o | sed 's/"+subject+"://g' | sort | uniq"
+    print(cmd)
+    result=subprocess.run(cmd,stdout=subprocess.PIPE,shell=True)
+    if result.returncode!=0:
+        raise ValueError("ERROR parsing for "+subject+"in :"+file)
+    
+    if len(result.stdout.decode("utf-8").strip().split("\n"))>1:
+        return(result.stdout.decode("utf-8").strip().split("\n"))
+    elif len(result.stdout.decode("utf-8").strip().split("\n"))==1:
+        return(result.stdout.decode("utf-8").strip())
+    else:
+        return(None)
             
 def getPairedStatus(file,rg_id,threads):
     cmd="samtools view -@"+str(threads)+" "+file+" -f2 | egrep '^@|"+rg_id+"' | head | wc -l | awk '{ if ($1!=10) exit 1}' "

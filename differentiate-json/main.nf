@@ -32,9 +32,9 @@ nextflow.enable.dsl = 2
 version = '0.1.0'  // package version
 
 container = [
-    'ghcr.io': 'ghcr.io/edsu7/argo-data-submission.differentiate-json'
+    'ghrc.io': 'ghrc.io/edsu7/argo-data-submission.differentiate-json'
 ]
-default_container_registry = 'ghcr.io'
+default_container_registry = 'ghrc.io'
 /********************************************************************/
 
 
@@ -61,14 +61,13 @@ process differentiateJson {
   memory "${params.mem} GB"
 
   input:  // input, make update as needed
-    file(user_generated_json)
-    file(auto_generated_json)
+    path user_generated_json
+    path auto_generated_json
 
   script:
     """
-    mkdir -p ${output_dir}
     python3.6 /tools/main.py \\
-      -a ${user_generated_json}
+      -a ${user_generated_json} \\
       -b ${auto_generated_json}
 
     """

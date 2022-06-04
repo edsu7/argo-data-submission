@@ -30,7 +30,7 @@ import os
 import sys
 import argparse
 import json
-
+import numpy
 
 def main():
     """
@@ -40,51 +40,78 @@ def main():
     """
 
     parser = argparse.ArgumentParser(description='differentiate JSON metadata payload for SONG upload')
-    parser.add_argument('-a', '--auto_generated', dest="auto_generated", help="auto generated json", required=True)
-    parser.add_argument('-b', '--user_provided',dest="user_provided", help="user generated json", required=True)
+    parser.add_argument('-b', '--auto_generated', dest="auto_generated", help="auto generated json", required=True)
+    parser.add_argument('-a', '--user_provided',dest="user_provided", help="user generated json", required=True)
 
     results = parser.parse_args()
 
-    for file,var in zip(
-        [results.auto_generated,results.user_provided],
-        [ag_dict,up_dict]
-    ):
-        with open(file) as json_file:
-            var = json.load(json_file)
-            
-    with open(json_a) as json_file:
+    with open(results.auto_generated) as json_file:
             ag_dict = json.load(json_file)
-    with open(json_b) as json_file:
+    with open(results.user_provided) as json_file:
             up_dict = json.load(json_file)
             
-    check_values(up_dict,ag_dict)
-            
+    warnings=[]
+    errors=[]
+    check_values(up_dict,ag_dict,warnings,errors,[])
+
+    if len(warnings)>0:
+        with open('WARNINGS.log', 'w') as f:
+            for warning in warnings:
+                f.write(warning+"\n")
+
+    if len(errors)>0:
+        with open('ERRORS.log', 'w') as f:
+            for error in errors:
+                f.write(error+"\n")
+        raise ValueError(str(len(errors))+" errors detected. Please refer to ERRORS.log" )
         
+
                 
-def check_values(json_a,json_b):
+def check_values(json_a,json_b,warnings:list,errors:list,nested_key=None,exceptions=[]):
     for key in json_b:
-        print(key)
+        nested_key.append(key)
+        print(key,len(nested_key))
+        if key in exceptions:
+            continue
+
         ###is key in X
         if key not in json_a:
-            raise ValueError("'"+key+"' not found in user generated JSON")
+            msg="'"+"/".join(nested_key)+"' not found in user generated JSON"
+            errors.append(msg)
+            nested_key.pop()
+            #print(key);print(msg);print(json_a);print(json_b)
+            continue
         
         ###
         elif type(json_a[key])==dict:
-            check_values(json_a[key],json_b[key])
-            
+            check_values(json_a[key],json_b[key],warnings,errors,nested_key)
         elif type(json_a[key])==list:
-            
+            if len(json_a[key])!=len(json_b[key]):
+                msg="Differing "+"/".join(nested_key)+" list length found in ' : user - "+str(len(json_a[key]))+" vs auto_gen - "+str(len(json_b[key]))
+                errors.append(msg)
+                nested_key.pop()
+                #print(key);print(msg)
+                continue
             for entry in enumerate(json_b[key]):
                 if type(entry[1])==dict:
-                    check_values(json_a[key][entry[0]],json_b[key][entry[0]])
+                    check_values(json_a[key][entry[0]],json_b[key][entry[0]],warnings,errors,nested_key)
                 else:
                     if json_a[key][entry[0]]!=json_b[key][entry[0]] and json_b[key][entry[0]] !=None:
-                        raise ValueError("Differing values found when comparing'"+key+"' :"+str(json_a[key][entry[0]])+" vs computed "+str(json_b[key][entry[0]]))
+                        msg="Differing values found when comparing'"+"/".join(nested_key)+"' : user - "+str(json_a[key][entry[0]])+" vs auto_gen - "+str(json_b[key][entry[0]])
+                        errors.append(msg)
+                        nested_key.pop(-1)
+                        #print(key);print(msg)
+                        continue
                     
         
         if json_a[key]!=json_b[key] and json_b[key]!=None:
-            raise ValueError("Differing values found when comparing'"+key+"' :"+str(json_a[key])+" vs computed "+str(json_b[key]))
-    
-    
+            msg="Differing values found when comparing '"+"/".join(nested_key)+"' : user - "+str(json_a[key])+" vs auto_gen - "+str(json_b[key])
+            errors.append(msg)
+            nested_key.pop()
+            #print(key);print(msg)
+            continue
+        nested_key.pop()
+        print(len(nested_key))
+    return(warnings,errors)
 if __name__ == "__main__":
     main()

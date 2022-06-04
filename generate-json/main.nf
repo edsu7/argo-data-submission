@@ -70,6 +70,7 @@ process generateJson {
     val specimen_type
     val submitter_sample_id
     val sample_type
+    val matchedNormalSubmitterSampleId
     val EGAX
     val EGAN
     val EGAR
@@ -81,10 +82,11 @@ process generateJson {
     path "${output_dir}/*.json", emit: json_file
 
   script:
-    output_dir = project+"/"
+    output_dir = "${program_id}"+"/"
     """
-    mkdir -p ${ega_id}
-    python3.6 /tools/main.py \\
+    mkdir -p ${program_id}
+    cat /tools/main.py
+    python3 /tools/main.py \\
     	--program_id ${program_id} \\
     	--submitter_donor_id ${submitter_donor_id} \\
         --gender ${gender} \\
@@ -94,12 +96,14 @@ process generateJson {
         --specimen_type ${specimen_type} \\
         --submitter_sample_id ${submitter_sample_id} \\
         --sample_type ${sample_type} \\
-        --matchedNormalSubmitterSampleId matchedNormalSubmitterSampleId \\
+        --matchedNormalSubmitterSampleId ${matchedNormalSubmitterSampleId} \\
         --EGAX ${EGAX} \\
         --EGAN ${EGAN} \\
         --EGAR ${EGAR} \\
         --EGAF ${EGAF} \\
-        --files ${output_files} \\
+        --EGAD '' \\
+        --EGAD '' \\
+        --output_files ${output_files} \\
         --md5 ${md5_files} \\
         --output_dir ${output_dir} \\
     	> generate_json.log 2>&1
@@ -111,21 +115,21 @@ process generateJson {
 // using this command: nextflow run <git_acc>/<repo>/<pkg_name>/<main_script>.nf -r <pkg_name>.v<pkg_version> --params-file xxx
 workflow {
   generateJson(
-    params.program_id
-    params.submitter_donor_id
-    params.gender
-    params.submitter_specimen_id
-    params.specimen_tissue_source
-    params.tumour_normal_designation
-    params.specimen_type
-    params.submitter_sample_id
-    params.sample_type
-    params.matchedNormalSubmitterSampleId
-    params.EGAX
-    params.EGAN
-    params.EGAR
-    params.EGAF
-    params.output_files
+    params.program_id,
+    params.submitter_donor_id,
+    params.gender,
+    params.submitter_specimen_id,
+    params.specimen_tissue_source,
+    params.tumour_normal_designation,
+    params.specimen_type,
+    params.submitter_sample_id,
+    params.sample_type,
+    params.matchedNormalSubmitterSampleId,
+    params.EGAX,
+    params.EGAN,
+    params.EGAR,
+    params.EGAF,
+    params.output_files,
     params.md5_files
   )
 }

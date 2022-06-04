@@ -5,12 +5,17 @@ LABEL org.opencontainers.image.authors Edmund Su (edmund.su@oicr.on.ca)
 LABEL org.opencontainers.image.title ICGC ARGO Data download image
 
 RUN apt-get update && \
-    apt-get install -y python3-pip python3-dev software-properties-common curl && \
+    apt-get install -y python3-pip python3-dev software-properties-common curl python3-setuptools && \
     apt-get install -y libz-dev pkg-config libtool m4 autotools-dev automake libncurses5-dev libbz2-dev liblzma-dev
 
-RUN pip3 install numpy
+
+
+RUN pip3 install --upgrade pip &&\
+	pip3 install numpy crypt4gh
 
 RUN mkdir /tools
+
+# Install samtools
 
 ENV PATH="/tools:${PATH}"
 

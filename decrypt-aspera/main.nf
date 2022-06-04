@@ -32,7 +32,7 @@ nextflow.enable.dsl = 2
 version = '0.1.0'  // package version
 
 container = [
-    'ghrc.io': 'ghrc.io/edsu7/argo-data-submission.download-aspera'
+    'ghrc.io': 'ghrc.io/edsu7/argo-data-submission.decrypt-aspera'
 ]
 default_container_registry = 'ghrc.io'
 /********************************************************************/
@@ -53,7 +53,7 @@ params.input_file = ""
 params.output_pattern = "*"  // output file name pattern
 
 
-process downloadAspera {
+process decryptAspera {
   container "${params.container ?: container[params.container_registry ?: default_container_registry]}:${params.container_version ?: version}"
   publishDir "${params.publish_dir}/${task.process.replaceAll(':', '_')}", mode: "copy", enabled: params.publish_dir
   errorStrategy 'terminate'
@@ -61,21 +61,20 @@ process downloadAspera {
   memory "${params.mem} GB"
 
   input:  // input, make update as needed
-    val input_file
-    val EGAF
-    val project
+    path file
+    path c4gh_secret_key
   output:  // output, make update as needed
-    path "${EGAF}/*.c4gh", emit: output_files
+    path "*.md5", emit: md5_file
+    path "*.{bam,cram,fastq.gz,fq.gz}", emit: output_files
 
   script:
     // add and initialize variables here as needed
     """
-    mkdir -p ${EGAF}
+    export C4GH_SECRET_KEY=${c4gh_secret_key}
+    export C4GH_PASSPHRASE=$C4GH_PASSPHRASE 
     python3.6 /tools/main.py \\
-      -f ${input_file} \\
-      -p ${project} \\
-      -o ${EGAF} \\
-      > download.log 2>&1
+      -f ${file} \\
+      > decrypt.log 2>&1
 
     """
 }
@@ -83,9 +82,8 @@ process downloadAspera {
 // this provides an entry point for this main script, so it can be run directly without clone the repo
 // using this command: nextflow run <git_acc>/<repo>/<pkg_name>/<main_script>.nf -r <pkg_name>.v<pkg_version> --params-file xxx
 workflow {
-  downloadAspera(
-    params.input_file,
-    params.EGAF,
-    params.project
+  decryptAspera(
+    params.file,
+    params.c4gh_secret_key
   )
 }

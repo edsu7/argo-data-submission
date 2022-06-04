@@ -25,6 +25,11 @@
     edsu7
 */
 
+/*
+ This is an auto-generated checker workflow to test the generated main template workflow, it's
+ meant to illustrate how testing works. Please update to suit your own needs.
+*/
+
 /********************************************************************/
 /* this block is auto-generated based on info from pkg.json where   */
 /* changes can be made if needed, do NOT modify this block manually */
@@ -32,60 +37,71 @@ nextflow.enable.dsl = 2
 version = '0.1.0'  // package version
 
 container = [
-    'ghrc.io': 'ghrc.io/edsu7/argo-data-submission.download-aspera'
+    'ghcr.io': 'ghcr.io/edsu7/argo-data-submission.generate-json'
 ]
-default_container_registry = 'ghrc.io'
+default_container_registry = 'ghcr.io'
 /********************************************************************/
 
-
-// universal params go here
+// universal params
 params.container_registry = ""
 params.container_version = ""
 params.container = ""
 
-params.cpus = 1
-params.mem = 1  // GB
-params.publish_dir = ""  // set to empty string will disable publishDir
-
-
 // tool specific parmas go here, add / change as needed
 params.input_file = ""
-params.output_pattern = "*"  // output file name pattern
+params.expected_output = ""
+
+include { generateJson } from '../main'
 
 
-process downloadAspera {
+process file_smart_diff {
   container "${params.container ?: container[params.container_registry ?: default_container_registry]}:${params.container_version ?: version}"
-  publishDir "${params.publish_dir}/${task.process.replaceAll(':', '_')}", mode: "copy", enabled: params.publish_dir
-  errorStrategy 'terminate'
-  cpus params.cpus
-  memory "${params.mem} GB"
 
-  input:  // input, make update as needed
-    val input_file
-    val EGAF
-    val project
-  output:  // output, make update as needed
-    path "${EGAF}/*.c4gh", emit: output_files
+  input:
+    path output_file
+    path expected_file
+
+  output:
+    stdout()
 
   script:
-    // add and initialize variables here as needed
     """
-    mkdir -p ${EGAF}
-    python3.6 /tools/main.py \\
-      -f ${input_file} \\
-      -p ${project} \\
-      -o ${EGAF} \\
-      > download.log 2>&1
+    # Note: this is only for demo purpose, please write your own 'diff' according to your own needs.
+    # in this example, we need to remove date field before comparison eg, <div id="header_filename">Tue 19 Jan 2021<br/>test_rg_3.bam</div>
+    # sed -e 's#"header_filename">.*<br/>test_rg_3.bam#"header_filename"><br/>test_rg_3.bam</div>#'
 
+    cat ${output_file[0]} \
+      | sed -e 's#"header_filename">.*<br/>#"header_filename"><br/>#' > normalized_output
+
+    ([[ '${expected_file}' == *.gz ]] && gunzip -c ${expected_file} || cat ${expected_file}) \
+      | sed -e 's#"header_filename">.*<br/>#"header_filename"><br/>#' > normalized_expected
+
+    diff normalized_output normalized_expected \
+      && ( echo "Test PASSED" && exit 0 ) || ( echo "Test FAILED, output file mismatch." && exit 1 )
     """
 }
 
-// this provides an entry point for this main script, so it can be run directly without clone the repo
-// using this command: nextflow run <git_acc>/<repo>/<pkg_name>/<main_script>.nf -r <pkg_name>.v<pkg_version> --params-file xxx
+
+workflow checker {
+  take:
+    input_file
+    expected_output
+
+  main:
+    generateJson(
+      input_file
+    )
+
+    file_smart_diff(
+      generateJson.out.output_file,
+      expected_output
+    )
+}
+
+
 workflow {
-  downloadAspera(
-    params.input_file,
-    params.EGAF,
-    params.project
+  checker(
+    file(params.input_file),
+    file(params.expected_output)
   )
 }
