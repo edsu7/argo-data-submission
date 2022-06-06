@@ -14,45 +14,32 @@ python3 generate_params_json.py -o ${working_directory} -c ${input_csv} -s {samp
 
 [For output see example_config.json ](https://github.com/edsu7/argo-data-submission#:~:text=10%20days%20ago-,example_config.json,-update%20to%20workflow)
 
-Requires the following environment variables to be populated :
+To run as aspera
 ```
-ASCP_SCP_HOST
-ASCP_SCP_USER
-ASPERA_SCP_PASS
-PYEGA3_EGA_USER
-PYEGA3_EGA_PASS
+export ASCP_SCP_HOST=''
+export ASCP_SCP_USER=''
+export ASPERA_SCP_PASS=''
+export C4GH_PASSPHRASE=''
+export ICGC_ARGO_API_TOKEN=''
+
+nextflow \\
+argo-data-submission/main.nf \\
+-params-file example.json \\
+-profile aspera \\
+--api_token ${ICGC_ARGO_API_TOKEN}
 
 ```
-Variable variables can be set in bash via:
+To run as pyega3
 ```
-export ASCP_SCP_HOST=demo.asperasoft.com
-export ASCP_SCP_USER=aspera
-export ASPERA_SCP_PASS=demoaspera
 export PYEGA3_EGA_USER=""
 export PYEGA3_EGA_PASS=""
+export ICGC_ARGO_API_TOKEN=''
+
+nextflow \\
+argo-data-submission/main.nf \\
+-params-file example.json \\
+-profile pyega3 \\
+--api_token ${ICGC_ARGO_API_TOKEN}
 ```
 (Profiles to be added to avoid populating variables related to unused method)
 
-
-Given an EGA id to download via Pyega3 - The following directories are populated:
-```
-Nextflow instance
-  |--DOWNLOAD.SUCCESS (or DOWNLOAD.FAILURE Flag)
-  |--download.log (bash log of download)
-  |--pyega3_output.log (Pyega3 generated log)
-  |--EGAFXXXXXXXXXXX
-    |--EGA download file
-    |--EGA file md5sum
-```
-
-Given an File to download via Aspera - The following directories are populated:
-```
-Nextflow instance
-  |--download.log (bash log of download)
-  |--PROJECT_NAME
-    |--FILE_NAME
-      |--EGA download file
-      |--EGA file md5sum
-      |--DOWNLOAD.SUCCESS (or DOWNLOAD.FAILURE Flag)
-      |--MD5SUM.SUCCESS (or MD5SUM.FAILURE Flag)
-```
