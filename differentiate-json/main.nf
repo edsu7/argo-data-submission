@@ -52,6 +52,8 @@ params.publish_dir = ""  // set to empty string will disable publishDir
 params.input_file = ""
 params.output_pattern = "*"  // output file name pattern
 
+params.user_generated_json="NO_FILE"
+params.auto_generated_json="NO_FILE"
 
 process differentiateJson {
   container "${params.container ?: container[params.container_registry ?: default_container_registry]}:${params.container_version ?: version}"

@@ -70,29 +70,36 @@ def main():
 def check_values(json_a,json_b,warnings:list,errors:list,nested_key=None,exceptions=[]):
     for key in json_b:
         nested_key.append(key)
-        print(key,len(nested_key))
+        
+        ###Check if key is an exception
         if key in exceptions:
             continue
 
-        ###is key in X
+        ###Check if key is missing from auto
         if key not in json_a:
             msg="'"+"/".join(nested_key)+"' not found in user generated JSON"
             errors.append(msg)
             nested_key.pop()
-            #print(key);print(msg);print(json_a);print(json_b)
             continue
         
-        ###
+        ###If key object is dictionary result in recursion
         elif type(json_a[key])==dict:
             check_values(json_a[key],json_b[key],warnings,errors,nested_key)
+        
+        ###If key object is list :
         elif type(json_a[key])==list:
+
+            ###Check list lenght User vs Auto
             if len(json_a[key])!=len(json_b[key]):
                 msg="Differing "+"/".join(nested_key)+" list length found in ' : user - "+str(len(json_a[key]))+" vs auto_gen - "+str(len(json_b[key]))
                 errors.append(msg)
                 nested_key.pop()
-                #print(key);print(msg)
                 continue
+
+            ###Check per ele entry in list
             for entry in enumerate(json_b[key]):
+
+                ###If key object ele is dictionary result in recursion
                 if type(entry[1])==dict:
                     check_values(json_a[key][entry[0]],json_b[key][entry[0]],warnings,errors,nested_key)
                 else:
@@ -100,7 +107,6 @@ def check_values(json_a,json_b,warnings:list,errors:list,nested_key=None,excepti
                         msg="Differing values found when comparing'"+"/".join(nested_key)+"' : user - "+str(json_a[key][entry[0]])+" vs auto_gen - "+str(json_b[key][entry[0]])
                         errors.append(msg)
                         nested_key.pop(-1)
-                        #print(key);print(msg)
                         continue
                     
         
@@ -108,10 +114,11 @@ def check_values(json_a,json_b,warnings:list,errors:list,nested_key=None,excepti
             msg="Differing values found when comparing '"+"/".join(nested_key)+"' : user - "+str(json_a[key])+" vs auto_gen - "+str(json_b[key])
             errors.append(msg)
             nested_key.pop()
-            #print(key);print(msg)
             continue
+
         nested_key.pop()
-        print(len(nested_key))
+    
     return(warnings,errors)
+
 if __name__ == "__main__":
     main()

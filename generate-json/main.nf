@@ -32,9 +32,9 @@ nextflow.enable.dsl = 2
 version = '0.1.0'  // package version
 
 container = [
-    'ghcr.io': 'ghcr.io/edsu7/argo-data-submission.generate-json'
+    'ghrc.io': 'ghrc.io/edsu7/argo-data-submission.generate-json'
 ]
-default_container_registry = 'ghcr.io'
+default_container_registry = 'ghrc.io'
 /********************************************************************/
 
 
@@ -75,37 +75,34 @@ process generateJson {
     val EGAN
     val EGAR
     val EGAF
-    val output_files
-    val md5_files
+    path output_files
+    path md5_files
 
   output:  // output, make update as needed
-    path "${output_dir}/*.json", emit: json_file
+    path "*.json", emit: json_file
 
   script:
-    output_dir = "${program_id}"+"/"
     """
     mkdir -p ${program_id}
-    cat /tools/main.py
     python3 /tools/main.py \\
-    	--program_id ${program_id} \\
-    	--submitter_donor_id ${submitter_donor_id} \\
-        --gender ${gender} \\
-        --submitter_specimen_id ${submitter_specimen_id} \\
-        --specimen_tissue_source ${specimen_tissue_source} \\
-        --tumour_normal_designation ${tumour_normal_designation} \\
-        --specimen_type ${specimen_type} \\
-        --submitter_sample_id ${submitter_sample_id} \\
-        --sample_type ${sample_type} \\
-        --matchedNormalSubmitterSampleId ${matchedNormalSubmitterSampleId} \\
-        --EGAX ${EGAX} \\
-        --EGAN ${EGAN} \\
-        --EGAR ${EGAR} \\
-        --EGAF ${EGAF} \\
+    	--program_id '${program_id}' \\
+    	--submitter_donor_id '${submitter_donor_id}' \\
+        --gender '${gender}' \\
+        --submitter_specimen_id '${submitter_specimen_id}' \\
+        --specimen_tissue_source '${specimen_tissue_source}' \\
+        --tumour_normal_designation '${tumour_normal_designation}' \\
+        --specimen_type '${specimen_type}' \\
+        --submitter_sample_id '${submitter_sample_id}' \\
+        --sample_type '${sample_type}' \\
+        --matchedNormalSubmitterSampleId '${matchedNormalSubmitterSampleId}' \\
+        --EGAX '${EGAX}' \\
+        --EGAN '${EGAN}' \\
+        --EGAR '${EGAR}' \\
+        --EGAF '${EGAF}' \\
         --EGAD '' \\
         --EGAD '' \\
-        --output_files ${output_files} \\
-        --md5 ${md5_files} \\
-        --output_dir ${output_dir} \\
+        --output_files '${output_files}' \\
+        --md5 '${md5_files}' \\
     	> generate_json.log 2>&1
     """
 }
@@ -133,3 +130,4 @@ workflow {
     params.md5_files
   )
 }
+

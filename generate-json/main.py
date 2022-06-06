@@ -93,7 +93,7 @@ def main():
         output_dict["experiment"]["experimental_strategy"]="WGS"
     
     
-    for ind,(file,md5) in enumerate(zip([args.output_files],[args.md5])):
+    for ind,(file,md5) in enumerate(zip(args.output_files.replace("]","").replace("[","").split(","),args.md5.replace("]","").replace("[","").split(","))):
         output_dict['files'].append(setupDictFiles())
         output_dict["files"][ind]["fileName"]=file
         output_dict["files"][ind]["fileType"]=determineFileType(file)
@@ -187,11 +187,15 @@ def setupDictReadGroups():
         })
 
 def determineFileType(file):
-    bam_result=subprocess.run("samtools quickcheck "+file, shell=True, check=True)      
+    cmd="samtools quickcheck "+file+" && echo 0 || echo 1"
+    print("Running - "+cmd)
+    bam_result=subprocess.run(cmd, shell=True, check=True)      
     if bam_result.returncode==0:
         return("BAM")
     
-    fastq_result=subprocess.run("zcat "+file+"| head -n1 | egrep \"^@\" || false")
+    cmd="zcat "+file+"| head -n1 | egrep \"^@\" || false"
+    print("Running - "+cmd)
+    fastq_result=subprocess.run(cmd, shell=True, check=True) 
     if fastq_result==0:
         return("FASTQ")
     else:
@@ -230,25 +234,30 @@ def determineReadGroupBam(file_list):
             
                 
 def getInsertSize(file,rg_id,threads):
-    cmd="samtools view -@"+str(threads)+" -F 256 -f 128 "+file+" | egrep '^@|"+rg_id+"'  | cut -f9"
+    cmd="samtools view -@"+str(threads)+" -F 256 -f 128 "+file+" | egrep '^@|"+rg_id+"'  | cut -f9 | head -n10000"
+
+    print("Running - "+cmd)
     result=subprocess.run(cmd,stdout=subprocess.PIPE,shell=True)
-    return(numpy.median([abs(int(line)) for line in result.stdout.decode("utf-8").split("\n")[:-1]]))
+    return(int(numpy.median([abs(int(line)) for line in result.stdout.decode("utf-8").split("\n")[:-1]])))
 
 def getReadLength(file,rg_id,read,threads):
     if read==1:
-        cmd="samtools view -@"+str(threads)+" -F 256 -f 64 "+file+" | egrep '^@|"+rg_id+"'  | cut -f10"
+        cmd="samtools view -@"+str(threads)+" -F 256 -f 64 "+file+" | egrep '^@|"+rg_id+"'  | cut -f10 | head -n10000"
     else:
-        cmd="samtools view -@"+str(threads)+" -F 256 -f 128 "+file+" | egrep '^@|"+rg_id+"'  | cut -f10"
-
+        cmd="samtools view -@"+str(threads)+" -F 256 -f 128 "+file+" | egrep '^@|"+rg_id+"'  | cut -f10 | head -n10000"
+    
+    print("Running - "+cmd)
     result=subprocess.run(cmd,stdout=subprocess.PIPE,shell=True)
     
     if result.returncode!=0:
         raise ValueError("Error determining read length in:"+file)
         
-    return(numpy.median([len(line) for line in result.stdout.decode("utf-8").split("\n")[:-1]]))
+    return(int(numpy.median([len(line) for line in result.stdout.decode("utf-8").split("\n")[:-1]])))
     
 def getMd5(md5):
     cmd="cat "+md5
+
+    print("Running - "+cmd)
     result=subprocess.run(cmd,stdout=subprocess.PIPE,shell=True)
     if result.returncode!=0:
         raise ValueError("Md5 sum file could not be openned "+md5)
@@ -264,7 +273,8 @@ def getHeaderInfo(file,subject,threads,rg=None):
         cmd="samtools view -@"+str(threads)+" "+file+" -H | grep '@RG' | grep "+rg+" | egrep '"+subject+regex+"' -o | sed 's/"+subject+"://g' | sort | uniq"
     else:
         cmd="samtools view -@"+str(threads)+" "+file+" -H | grep '@RG' | egrep '"+subject+regex+"' -o | sed 's/"+subject+"://g' | sort | uniq"
-    print(cmd)
+    
+    print("Running - "+cmd)
     result=subprocess.run(cmd,stdout=subprocess.PIPE,shell=True)
     if result.returncode!=0:
         raise ValueError("ERROR parsing for "+subject+"in :"+file)
@@ -278,6 +288,8 @@ def getHeaderInfo(file,subject,threads,rg=None):
             
 def getPairedStatus(file,rg_id,threads):
     cmd="samtools view -@"+str(threads)+" "+file+" -f2 | egrep '^@|"+rg_id+"' | head | wc -l | awk '{ if ($1!=10) exit 1}' "
+    
+    print("Running - "+cmd)
     result=subprocess.run(cmd,stdout=subprocess.PIPE,shell=True)
     if result.returncode!=0:
         return(False)

@@ -14,7 +14,7 @@
     "container": {
         "registries": [
             {
-                "registry": "ghcr.io",
+                "registry": "ghrc.io",
                 "type": "docker",
                 "org": "edsu7",
                 "default": true

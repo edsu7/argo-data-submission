@@ -55,16 +55,47 @@ params.EGAX=''
 params.EGAN=''
 params.EGAR=''
 params.EGAF=''
-params.json='.'
+params.json=''
 params.c4gh_secret_key='NO_FILE'
 params.aspera_file='NO_FILE'
+params.song_url= ''
+params.score_url=''
+params.analysis_id = ""
 
-//include { SongScoreUpload } from "./wfpr_modules/nextflow-data-processing-utility-tools/song-score-upload@2.6.1/main.nf" 
+params.max_retries = 5  // set to 0 will disable retry
+params.first_retry_wait_time = 1  // in seconds
+
+params.api_token=''
+params.song_cpus = 1
+params.song_mem = 1  // GB
+params.song_url = "https://song.rdpc-qa.cancercollaboratory.org"
+params.song_api_token = ""
+params.song_container_version = "4.2.1"
+
+params.score_cpus = 1
+params.score_mem = 1  // GB
+params.score_transport_mem = 1  // GB
+params.score_url = "https://score.rdpc-qa.cancercollaboratory.org"
+params.score_api_token = ""
+params.score_container_version = "5.0.0"
+
+SongScoreUpload_params = [
+    'max_retries': params.max_retries,
+    'first_retry_wait_time': params.first_retry_wait_time,
+    'cpus': params.cpus,
+    'mem': params.mem,
+    'song_url': params.song_url,
+    'score_url': params.score_url,
+    'api_token': params.api_token,
+    *:(params.SongScoreUpload ?: [:])
+]
+
+include { SongScoreUpload } from "./wfpr_modules/nextflow-data-processing-utility-tools/song-score-upload@2.6.1/main.nf" params(SongScoreUpload_params)
 include { downloadAspera } from "./wfpr_modules/download-aspera/main.nf"
 include { downloadPyega3 } from "./wfpr_modules/download-pyega3/main.nf"
 include { generateJson } from "./wfpr_modules/generate-json/main.nf"
 include { decryptAspera } from "./wfpr_modules/decrypt-aspera/main.nf"
-//include { diffJson } from "./wfpr_modules/differentiate-json/main.nf"
+include { differentiateJson } from "./wfpr_modules/differentiate-json/main.nf"
 
 workflow ArgoDataSubmissionWf {
   take:
@@ -119,25 +150,25 @@ workflow ArgoDataSubmissionWf {
       output_files,
       output_md5
     )
-   
-    //if (json!='.'){
-    //  diffJson(json,generateJson.out.json)
-    //  output_json=json
-    //} else {
-   //   output_json=generateJson.out.json
-    //}
+
+    if (json){
+      differentiateJson(json,generateJson.out.json_file)
+      output_json=json
+    } else {
+      output_json=generateJson.out.json_file
+    }
 
 
-    //SongScoreUpload(
-    //  program_id,
-    //  output_json
-    //)
+    SongScoreUpload(
+      program_id,
+      output_json,
+      output_files.collect()
+    )
   
     emit:
-      generateJson.out.json
-      //output_json
-      //output_files
-      //output_analysis_id=SongScoreUpload.out.analysis_id
+      json_file=output_json
+      output_files
+      output_analysis_id=SongScoreUpload.out.analysis_id
 }
 
 // this provides an entry point for this main script, so it can be run directly without clone the repo
