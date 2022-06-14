@@ -67,23 +67,17 @@ def main():
 
         # Write the file to be downloaded to the temporary file
         with open(file_list, 'w') as f:
-            f.write(os.path.join('data',results.project_name,results.file_name))
+            f.write(results.file_name)
             f.write('\n')
 
         # Download process
-        result=subprocess.run(['ascp','-k','1','-QTl','100m','--file-list='+file_list,'--partial-file-suffix=PART','--ignore-host-key','--mode=recv','--host='+os.environ['ASCP_EGA_HOST'],'--user='+os.environ['ASCP_EGA_USER'],'.'])
-        mkdir_p(os.path.dirname(results.output),os.path.basename(file))
-        
-        shutil.move(
-            os.path.basename(results.file_name),
-            results.output+"/"+os.path.basename(results.file_name)+"/"+results.file_name
-        )
+        result=subprocess.run(['/home/ubuntu/.aspera/connect/bin/ascp','-k','1','-QTl','100m','--file-list='+file_list,'--partial-file-suffix=PART','--ignore-host-key','--mode=recv','--host='+os.environ['ASCP_SCP_HOST'],'--user='+os.environ['ASCP_SCP_USER'],results.output])
         
         if result.returncode==0:
-            subprocess.run("touch "+results.output+"/"+os.path.basename(results.file_name)+"/DOWNLOAD.SUCCESS",shell=True)
+            subprocess.run("touch "+results.output+"/DOWNLOAD.SUCCESS",shell=True)
         else:
-            subprocess.run("touch "+results.output+"/"+os.path.basename(results.file_name)+"/DOWNLOAD.FAILURE",shell=True)
-            
+            subprocess.run("touch "+results.output+"/DOWNLOAD.FAILURE",shell=True)
+        
         # Deletion of temporary elements
         os.remove(file_list)
     except Exception as err:
@@ -99,8 +93,8 @@ def randomword(length):
 
 def mkdir_p(path,file):
     try:
-        os.makedirs(path,0o755, True )
-        os.makedirs(path+"/"+file,0o755, True )
+        os.makedirs(path,mode=0o755, exist_ok=True )
+        os.makedirs(path+"/"+file,mode=0o755, exist_ok=True )
     except OSError as exc:  # Python >2.5
         if exc.errno == errno.EEXIST and os.path.isdir(path):
             pass

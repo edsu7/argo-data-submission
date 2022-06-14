@@ -1,0 +1,5 @@
+{
+    "project" : "TEST",
+    "input_file" : "/aspera-test-dir-large/100MB", 
+    "EGAF" : "EGAF000001"
+}

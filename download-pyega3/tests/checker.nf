@@ -37,21 +37,56 @@ nextflow.enable.dsl = 2
 version = '0.1.0'  // package version
 
 container = [
-    'quay.io': 'quay.io/edsu7/argo-data-submission.download-pyega3'
+    'ghrc.io': 'ghrc.io/icgc-argo/argo-data-submission.download-pyega3'
 ]
-default_container_registry = 'quay.io'
+default_container_registry = 'ghrc.io'
 /********************************************************************/
 
 // universal params
 params.container_registry = ""
 params.container_version = ""
 params.container = ""
+// tool specific parmas go here, add / change as needed
+
+params.cpus = 1
+params.mem = 1  // GB
+params.publish_dir = ""  // set to empty string will disable publishDir
+
 
 // tool specific parmas go here, add / change as needed
 params.input_file = ""
-params.expected_output = ""
+params.output_pattern = "*"  // output file name pattern
 
-include { downloadPyega3 } from '../main'
+
+
+process downloadPyega3 {
+  container "${params.container ?: container[params.container_registry ?: default_container_registry]}:${params.container_version ?: version}"
+  publishDir "${params.publish_dir}/${task.process.replaceAll(':', '_')}", mode: "copy", enabled: params.publish_dir
+  errorStrategy 'terminate'
+  cpus params.cpus
+  memory "${params.mem} GB"
+
+  input:  // input, make update as needed
+    val project
+    val ega_id
+
+  output:  // output, make update as needed
+    path "${ega_id}/*.md5", emit: md5_file
+    path "${ega_id}/*.{.bam,.cram,.fastq.gz,.fq.gz}", emit: output_file
+
+  script:
+
+    """
+    mkdir -p ${ega_id}
+    export PYEGA3_EGA_USER="ega-test-data@ebi.ac.uk"
+    export PYEGA3_EGA_PASS="egarocks"
+    python3.6 /tools/main.py \\
+        -p ${project} \\
+        -f ${ega_id} \\
+        -o \$PWD \\
+        > download.log 2>&1
+    """
+}
 
 
 process file_smart_diff {
@@ -59,7 +94,6 @@ process file_smart_diff {
 
   input:
     path output_file
-    path expected_file
 
   output:
     stdout()
@@ -70,12 +104,9 @@ process file_smart_diff {
     # in this example, we need to remove date field before comparison eg, <div id="header_filename">Tue 19 Jan 2021<br/>test_rg_3.bam</div>
     # sed -e 's#"header_filename">.*<br/>test_rg_3.bam#"header_filename"><br/>test_rg_3.bam</div>#'
 
-    cat ${output_file[0]} \
-      | sed -e 's#"header_filename">.*<br/>#"header_filename"><br/>#' > normalized_output
-
-    ([[ '${expected_file}' == *.gz ]] && gunzip -c ${expected_file} || cat ${expected_file}) \
-      | sed -e 's#"header_filename">.*<br/>#"header_filename"><br/>#' > normalized_expected
-
+    cat ${output_file} | egrep -o '^[0-9a-f]{32}' > normalized_output
+    echo 'ce073afcbc07afa343f2d4e4d07efeda'  > normalized_expected
+    
     diff normalized_output normalized_expected \
       && ( echo "Test PASSED" && exit 0 ) || ( echo "Test FAILED, output file mismatch." && exit 1 )
     """
@@ -84,24 +115,23 @@ process file_smart_diff {
 
 workflow checker {
   take:
-    input_file
-    expected_output
+    project
+    ega_id
 
   main:
-    downloadPyega3(
-      input_file
+   downloadPyega3(
+      project,
+      ega_id
     )
-
     file_smart_diff(
       downloadPyega3.out.output_file,
-      expected_output
     )
 }
 
 
 workflow {
   checker(
-    file(params.input_file),
-    file(params.expected_output)
+    params.project,
+    params.ega_id,
   )
 }

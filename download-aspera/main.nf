@@ -22,7 +22,7 @@
   SOFTWARE.
 
   Authors:
-    edsu7
+    Edmund Su
 */
 
 /********************************************************************/
@@ -32,9 +32,9 @@ nextflow.enable.dsl = 2
 version = '0.1.0'  // package version
 
 container = [
-    'quay.io': 'quay.io/edsu7/argo-data-submission.download-aspera'
+    'ghrc.io': 'ghrc.io/icgc-argo/argo-data-submission.download-aspera'
 ]
-default_container_registry = 'quay.io'
+default_container_registry = 'ghrc.io'
 /********************************************************************/
 
 
@@ -56,34 +56,36 @@ params.output_pattern = "*"  // output file name pattern
 process downloadAspera {
   container "${params.container ?: container[params.container_registry ?: default_container_registry]}:${params.container_version ?: version}"
   publishDir "${params.publish_dir}/${task.process.replaceAll(':', '_')}", mode: "copy", enabled: params.publish_dir
-
+  errorStrategy 'terminate'
   cpus params.cpus
   memory "${params.mem} GB"
 
   input:  // input, make update as needed
-    path input_file
-
+    val input_file
+    val EGAF
+    val project
   output:  // output, make update as needed
-    path "output_dir/${params.output_pattern}", emit: output_file
+    path "${EGAF}/*.c4gh", emit: output_files
 
   script:
     // add and initialize variables here as needed
-
     """
-    mkdir -p output_dir
-
-    main.py \
-      -i ${input_file} \
-      -o output_dir
+    mkdir -p ${EGAF}
+    python3.6 /tools/main.py \\
+      -f ${input_file} \\
+      -p ${project} \\
+      -o ${EGAF} \\
+      > download.log 2>&1
 
     """
 }
 
-
 // this provides an entry point for this main script, so it can be run directly without clone the repo
-// using this command: nextflow run <git_acc>/<repo>/<pkg_name>/<main_script>.nf -r <pkg_name>.v<pkg_version> --params-file xxx
+errorStrategy 'terminate'// using this command: nextflow run <git_acc>/<repo>/<pkg_name>/<main_script>.nf -r <pkg_name>.v<pkg_version> --params-file xxx
 workflow {
   downloadAspera(
-    file(params.input_file)
+    params.input_file,
+    params.EGAF,
+    params.project
   )
 }

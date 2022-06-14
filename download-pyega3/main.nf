@@ -32,9 +32,9 @@ nextflow.enable.dsl = 2
 version = '0.1.0'  // package version
 
 container = [
-    'quay.io': 'quay.io/edsu7/argo-data-submission.download-pyega3'
+    'ghrc.io': 'ghrc.io/icgc-argo/argo-data-submission.download-pyega3'
 ]
-default_container_registry = 'quay.io'
+default_container_registry = 'ghrc.io'
 /********************************************************************/
 
 
@@ -53,30 +53,31 @@ params.input_file = ""
 params.output_pattern = "*"  // output file name pattern
 
 
+
 process downloadPyega3 {
   container "${params.container ?: container[params.container_registry ?: default_container_registry]}:${params.container_version ?: version}"
   publishDir "${params.publish_dir}/${task.process.replaceAll(':', '_')}", mode: "copy", enabled: params.publish_dir
-
+  errorStrategy 'terminate'
   cpus params.cpus
   memory "${params.mem} GB"
 
   input:  // input, make update as needed
-    path output
-    val project
     val ega_id
+    val project
 
   output:  // output, make update as needed
-    path "output_dir/${*/pyega3_output.log}", emit: log
+    path "${ega_id}/*.md5", emit: md5_file
+    path "${ega_id}/*.{bam,cram,fastq.gz,fq.gz}", emit: output_files
 
   script:
-    def tempdir_arg = tempdir != "" ? "--tempdir ${tempdir}" : ""
 
     """
-    python main.py \\
-    -p ${project}\\
-    -f ${ega_id} \\
-    -o ${output} \\
-    > download.log 2>&1
+    mkdir -p ${ega_id}
+    python3.6 /tools/main.py \\
+    	-p ${project} \\
+    	-f ${ega_id} \\
+    	-o \$PWD \\
+    	> download.log 2>&1
     """
 }
 
@@ -85,8 +86,7 @@ process downloadPyega3 {
 // using this command: nextflow run <git_acc>/<repo>/<pkg_name>/<main_script>.nf -r <pkg_name>.v<pkg_version> --params-file xxx
 workflow {
   downloadPyega3(
-    file(params.output),
-    file(params.project),
-    file(params.ega_id)
+    params.ega_id,
+    params.project
   )
 }

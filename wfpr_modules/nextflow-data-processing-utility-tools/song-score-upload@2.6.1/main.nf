@@ -71,10 +71,10 @@ score_params = [
     'api_token': params.score_api_token ?: params.api_token
 ]
 
-include { songSubmit as songSub } from './local_modules/song-submit' params(song_params)
-include { songManifest as songMan } from './local_modules/song-manifest' params(song_params)
-include { scoreUpload as scoreUp } from './local_modules/score-upload' params(score_params)
-include { songPublish as songPub } from './local_modules/song-publish' params(song_params)
+include { songSubmit as songSub } from './local_modules/song_submit.nf' params(song_params)
+include { songManifest as songMan } from './local_modules/song_manifest.nf' params(song_params)
+include { scoreUpload as scoreUp } from './local_modules/score_upload.nf' params(score_params)
+include { songPublish as songPub } from './local_modules/song_publish.nf' params(song_params)
 
 
 workflow SongScoreUpload {
@@ -82,14 +82,13 @@ workflow SongScoreUpload {
         study_id
         payload
         upload
-        analysis_id
 
     main:
-        if (!analysis_id) {
-          // Create new analysis
-          songSub(study_id, payload)
-          analysis_id = songSub.out
-        }
+
+        // Create new analysis
+        songSub(study_id, payload)
+        analysis_id = songSub.out
+
 
         // Generate file manifest for upload
         songMan(study_id, analysis_id, upload.collect())
@@ -112,7 +111,6 @@ workflow {
   SongScoreUpload(
     params.study_id,
     file(params.payload),
-    Channel.fromPath(params.upload),
-    params.analysis_id
+    Channel.fromPath(params.upload)
   )
 }
