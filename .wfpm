@@ -2,4 +2,4 @@ project_name: argo-data-submission
 license: MIT
 repo_type: git
 repo_server: github.com
-repo_account: edsu7
+repo_account: icgc-argo
